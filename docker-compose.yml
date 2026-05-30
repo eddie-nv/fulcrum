@@ -59,3 +59,19 @@ services:
       - "3003:3003"
     environment:
       PORT: "3003"
+
+  # Baton — event-sourcing state fabric (optional, enable with: docker compose --profile baton up)
+  # Clone https://github.com/eddie-nv/baton alongside this repo first, then set BATON_BUILD_PATH.
+  baton:
+    build:
+      context: ${BATON_BUILD_PATH:-../baton}
+    ports:
+      - "3004:3000"
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6380
+    depends_on:
+      redis:
+        condition: service_healthy
+    profiles:
+      - baton
