@@ -7,6 +7,8 @@
 # Import: superplane canvases update -f canvas.yaml
 # Trigger: POST the webhook URL with {"container_id": "target-v2", "error_signature": "..."}
 
+apiVersion: v1
+kind: Canvas
 metadata:
   name: fulcrum-incident-response
   description: >
@@ -33,7 +35,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: {{env.FULCRUM_URL}}/investigate
+        url: "{{env.FULCRUM_URL}}/investigate"
         headers:
           - name: Content-Type
             value: application/json
@@ -49,7 +51,7 @@ spec:
       component: http
       configuration:
         method: GET
-        url: {{env.FULCRUM_URL}}/snapshot/{{$['Incident Webhook'].data.container_id}}
+        url: "{{env.FULCRUM_URL}}/snapshot/{{$['Incident Webhook'].data.container_id}}"
         timeoutSeconds: 10
       position: { x: 600, y: 400 }
 
@@ -73,7 +75,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: {{env.FULCRUM_URL}}/remediate
+        url: "{{env.FULCRUM_URL}}/remediate"
         headers:
           - name: Content-Type
             value: application/json
@@ -89,7 +91,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: {{env.FULCRUM_URL}}/remediate
+        url: "{{env.FULCRUM_URL}}/remediate"
         headers:
           - name: Content-Type
             value: application/json
@@ -105,7 +107,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: {{env.FULCRUM_URL}}/remediate
+        url: "{{env.FULCRUM_URL}}/remediate"
         headers:
           - name: Content-Type
             value: application/json
@@ -131,7 +133,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: {{env.FULCRUM_URL}}/plan
+        url: "{{env.FULCRUM_URL}}/plan"
         headers:
           - name: Content-Type
             value: application/json
@@ -148,7 +150,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: {{env.FULCRUM_URL}}/remediate
+        url: "{{env.FULCRUM_URL}}/remediate"
         headers:
           - name: Content-Type
             value: application/json
@@ -164,7 +166,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: {{env.FULCRUM_URL}}/remediate
+        url: "{{env.FULCRUM_URL}}/remediate"
         headers:
           - name: Content-Type
             value: application/json
@@ -180,7 +182,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: {{env.FULCRUM_URL}}/remediate
+        url: "{{env.FULCRUM_URL}}/remediate"
         headers:
           - name: Content-Type
             value: application/json
@@ -218,7 +220,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: {{env.FULCRUM_URL}}/apply
+        url: "{{env.FULCRUM_URL}}/apply"
         headers:
           - name: Content-Type
             value: application/json
@@ -234,7 +236,7 @@ spec:
       component: http
       configuration:
         method: GET
-        url: {{env.FULCRUM_URL}}/card/{{$['Investigate'].data.body.session_id}}
+        url: "{{env.FULCRUM_URL}}/card/{{$['Investigate'].data.body.session_id}}"
         timeoutSeconds: 10
       position: { x: 3300, y: 200 }
 
@@ -257,7 +259,7 @@ spec:
       component: http
       configuration:
         method: GET
-        url: {{env.FULCRUM_URL}}/card/{{$['Investigate'].data.body.session_id}}
+        url: "{{env.FULCRUM_URL}}/card/{{$['Investigate'].data.body.session_id}}"
         timeoutSeconds: 10
       position: { x: 3000, y: 600 }
 
@@ -287,9 +289,9 @@ spec:
     - { sourceId: store-session, targetId: l1-fix-redis,  channel: default }
 
     # Level 1 → merge
-    - { sourceId: l1-rollback,  targetId: merge-l1, channel: default }
-    - { sourceId: l1-restart,   targetId: merge-l1, channel: default }
-    - { sourceId: l1-fix-redis, targetId: merge-l1, channel: default }
+    - { sourceId: l1-rollback,  targetId: merge-l1, channel: success }
+    - { sourceId: l1-restart,   targetId: merge-l1, channel: success }
+    - { sourceId: l1-fix-redis, targetId: merge-l1, channel: success }
 
     # Merge → plan
     - { sourceId: merge-l1, targetId: plan, channel: success }
@@ -300,9 +302,9 @@ spec:
     - { sourceId: plan, targetId: l2-s3, channel: success }
 
     # Level 2 → merge
-    - { sourceId: l2-s1, targetId: merge-l2, channel: default }
-    - { sourceId: l2-s2, targetId: merge-l2, channel: default }
-    - { sourceId: l2-s3, targetId: merge-l2, channel: default }
+    - { sourceId: l2-s1, targetId: merge-l2, channel: success }
+    - { sourceId: l2-s2, targetId: merge-l2, channel: success }
+    - { sourceId: l2-s3, targetId: merge-l2, channel: success }
 
     # Merge → winner check
     - { sourceId: merge-l2,      targetId: check-winner, channel: success }

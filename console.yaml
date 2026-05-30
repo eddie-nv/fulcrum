@@ -1,63 +1,85 @@
-# Fulcrum — Operational Console
-# Import: superplane consoles update -f console.yaml
-
+apiVersion: v1
+kind: Console
 metadata:
   name: fulcrum-console
-  description: Incident response dashboard — live status, recent runs, and runbook
-
 spec:
   panels:
+    - id: intro
+      type: markdown
+      content:
+        title: Fulcrum — Incident Response Agent
+        body: |
+          **How to trigger an investigation**
 
-    - type: Markdown
-      title: Fulcrum — Incident Response Agent
-      content: |
-        **How to trigger an investigation**
+          ```bash
+          curl -X POST <WEBHOOK_URL> \
+            -H "Content-Type: application/json" \
+            -d '{"container_id": "target-v2", "error_signature": "redis: ECONNREFUSED 127.0.0.1:6379"}'
+          ```
 
-        ```bash
-        curl -X POST <WEBHOOK_URL> \
-          -H "Content-Type: application/json" \
-          -d '{"container_id": "target-v2", "error_signature": "redis: ECONNREFUSED 127.0.0.1:6379"}'
-        ```
+          **Flow:** Webhook → `/investigate` → 3× parallel Level 1 forks → `/plan` (Claude) → 3× Level 2 forks → `/apply` winner → Slack
 
-        **Flow:** Webhook → `/investigate` → 3× parallel Level 1 forks → `/plan` (Claude) → 3× Level 2 forks → `/apply` winner → Slack
+          | Service | Port |
+          |---|---|
+          | target:v1 (healthy) | 3001 |
+          | target:v2 (broken)  | 3002 |
+          | Fulcrum API         | 8000 |
 
-        **Services**
-        | Service | Port | Status |
-        |---|---|---|
-        | target:v1 (healthy) | 3001 | `curl localhost:3001/health` |
-        | target:v2 (broken)  | 3002 | `curl localhost:3002/health` |
-        | Fulcrum API         | 8000 | `curl localhost:8000/health` |
+    - id: webhook-node
+      type: node
+      content:
+        title: Webhook Trigger
+        node: webhook
 
-    - type: Node
-      title: Webhook Trigger
-      nodeId: webhook
+    - id: investigate-node
+      type: node
+      content:
+        title: Investigate
+        node: investigate
 
-    - type: Node
-      title: Investigate
-      nodeId: investigate
+    - id: plan-node
+      type: node
+      content:
+        title: AI Planner
+        node: plan
 
-    - type: Node
-      title: AI Planner
-      nodeId: plan
+    - id: apply-node
+      type: node
+      content:
+        title: Apply Winner
+        node: apply
 
-    - type: Node
-      title: Apply Winner
-      nodeId: apply
+    - id: fork-status
+      type: nodes
+      content:
+        title: Fork Status
+        nodes:
+          - node: l1-rollback
+          - node: l1-restart
+          - node: l1-fix-redis
+          - node: l2-s1
+          - node: l2-s2
+          - node: l2-s3
 
-    - type: KeyNodes
-      title: Fork Status
-      nodeIds:
-        - l1-rollback
-        - l1-restart
-        - l1-fix-redis
-        - l2-s1
-        - l2-s2
-        - l2-s3
+    - id: recent-runs
+      type: table
+      content:
+        title: Recent Investigations
+        dataSource:
+          kind: executions
+          limit: 20
+        render:
+          kind: table
+          columns:
+            - field: status
+            - field: nodeName
+            - field: durationMs
 
-    - type: Table
-      title: Recent Investigations
-      source: Executions
-      columns:
-        - started_at
-        - status
-        - duration_ms
+  layout:
+    - { i: intro,            x: 0, y: 0,  w: 12, h: 6,  minW: 2, minH: 2 }
+    - { i: webhook-node,     x: 0, y: 6,  w: 3,  h: 4,  minW: 2, minH: 2 }
+    - { i: investigate-node, x: 3, y: 6,  w: 3,  h: 4,  minW: 2, minH: 2 }
+    - { i: plan-node,        x: 6, y: 6,  w: 3,  h: 4,  minW: 2, minH: 2 }
+    - { i: apply-node,       x: 9, y: 6,  w: 3,  h: 4,  minW: 2, minH: 2 }
+    - { i: fork-status,      x: 0, y: 10, w: 12, h: 6,  minW: 2, minH: 2 }
+    - { i: recent-runs,      x: 0, y: 16, w: 12, h: 8,  minW: 2, minH: 2 }
