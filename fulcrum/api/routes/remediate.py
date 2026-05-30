@@ -29,6 +29,14 @@ async def remediate(req: RemediateRequest):
 
     snapshot = req.snapshot
 
+    # Auto-snapshot when the caller (e.g. Superplane canvas) passes an empty dict —
+    # resolve the container from the session's container_id.
+    if not snapshot and card.container_id:
+        try:
+            snapshot = ForkEngine().snapshot(card.container_id)
+        except Exception:
+            pass  # fall through to stub
+
     if "image" in snapshot:
         try:
             engine = ForkEngine()

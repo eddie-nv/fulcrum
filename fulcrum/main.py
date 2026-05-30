@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fulcrum.api.routes import health, investigate, remediate, apply, plan, card
+from fulcrum.api.routes import health, investigate, remediate, apply, plan, card, snapshot
 
 app = FastAPI(
     title="Fulcrum",
@@ -9,6 +9,7 @@ app = FastAPI(
 
 app.include_router(health.router, tags=["health"])
 app.include_router(investigate.router, tags=["investigate"])
+app.include_router(snapshot.router, tags=["snapshot"])
 app.include_router(remediate.router, tags=["remediate"])
 app.include_router(apply.router, tags=["apply"])
 app.include_router(plan.router, tags=["plan"])

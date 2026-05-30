@@ -1,0 +1,63 @@
+# Fulcrum — Operational Console
+# Import: superplane consoles update -f console.yaml
+
+metadata:
+  name: fulcrum-console
+  description: Incident response dashboard — live status, recent runs, and runbook
+
+spec:
+  panels:
+
+    - type: Markdown
+      title: Fulcrum — Incident Response Agent
+      content: |
+        **How to trigger an investigation**
+
+        ```bash
+        curl -X POST <WEBHOOK_URL> \
+          -H "Content-Type: application/json" \
+          -d '{"container_id": "target-v2", "error_signature": "redis: ECONNREFUSED 127.0.0.1:6379"}'
+        ```
+
+        **Flow:** Webhook → `/investigate` → 3× parallel Level 1 forks → `/plan` (Claude) → 3× Level 2 forks → `/apply` winner → Slack
+
+        **Services**
+        | Service | Port | Status |
+        |---|---|---|
+        | target:v1 (healthy) | 3001 | `curl localhost:3001/health` |
+        | target:v2 (broken)  | 3002 | `curl localhost:3002/health` |
+        | Fulcrum API         | 8000 | `curl localhost:8000/health` |
+
+    - type: Node
+      title: Webhook Trigger
+      nodeId: webhook
+
+    - type: Node
+      title: Investigate
+      nodeId: investigate
+
+    - type: Node
+      title: AI Planner
+      nodeId: plan
+
+    - type: Node
+      title: Apply Winner
+      nodeId: apply
+
+    - type: KeyNodes
+      title: Fork Status
+      nodeIds:
+        - l1-rollback
+        - l1-restart
+        - l1-fix-redis
+        - l2-s1
+        - l2-s2
+        - l2-s3
+
+    - type: Table
+      title: Recent Investigations
+      source: Executions
+      columns:
+        - started_at
+        - status
+        - duration_ms

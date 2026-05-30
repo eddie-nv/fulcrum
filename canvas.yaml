@@ -1,0 +1,317 @@
+# Fulcrum — Incident Response Canvas
+#
+# Before importing, set these canvas environment variables in Superplane:
+#   FULCRUM_URL   — e.g. https://your-fulcrum.onrender.com  (no trailing slash)
+#   SLACK_CHANNEL — Slack channel ID for notifications
+#
+# Import: superplane canvases update -f canvas.yaml
+# Trigger: POST the webhook URL with {"container_id": "target-v2", "error_signature": "..."}
+
+metadata:
+  name: fulcrum-incident-response
+  description: >
+    AI-driven parallel container remediation — fork N strategies across isolated
+    containers, ask Claude to pick the next round, apply the winner.
+  isTemplate: false
+
+spec:
+  nodes:
+
+    # ── Trigger ──────────────────────────────────────────────────────────────
+    - id: webhook
+      name: Incident Webhook
+      type: TYPE_TRIGGER
+      component: webhook
+      configuration:
+        authentication: none
+      position: { x: 0, y: 400 }
+
+    # ── Session setup ─────────────────────────────────────────────────────────
+    - id: investigate
+      name: Investigate
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: http://localhost:8000/investigate
+        headers:
+          - name: Content-Type
+            value: application/json
+        body: >-
+          {"container_id":"{{$['Incident Webhook'].data.container_id}}","error_signature":"{{$['Incident Webhook'].data.error_signature}}"}
+        contentType: application/json
+        timeoutSeconds: 10
+      position: { x: 300, y: 400 }
+
+    - id: get-snapshot
+      name: Get Snapshot
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: GET
+        url: http://localhost:8000/snapshot/{{$['Incident Webhook'].data.container_id}}
+        timeoutSeconds: 10
+      position: { x: 600, y: 400 }
+
+    - id: store-session
+      name: Store Session
+      type: TYPE_ACTION
+      component: addMemory
+      configuration:
+        namespace: fulcrum-session
+        valueList:
+          - name: session_id
+            value: "{{$['Investigate'].data.body.session_id}}"
+          - name: snapshot
+            value: "{{json($['Get Snapshot'].data.body)}}"
+      position: { x: 900, y: 400 }
+
+    # ── Level 1: 3 parallel probes ────────────────────────────────────────────
+    - id: l1-rollback
+      name: L1 Rollback
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: http://localhost:8000/remediate
+        headers:
+          - name: Content-Type
+            value: application/json
+        body: >-
+          {"session_id":"{{$['Investigate'].data.body.session_id}}","strategy":"rollback","snapshot":{{json($['Get Snapshot'].data.body)}}}
+        contentType: application/json
+        timeoutSeconds: 60
+      position: { x: 1200, y: 200 }
+
+    - id: l1-restart
+      name: L1 Restart
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: http://localhost:8000/remediate
+        headers:
+          - name: Content-Type
+            value: application/json
+        body: >-
+          {"session_id":"{{$['Investigate'].data.body.session_id}}","strategy":"restart","snapshot":{{json($['Get Snapshot'].data.body)}}}
+        contentType: application/json
+        timeoutSeconds: 60
+      position: { x: 1200, y: 400 }
+
+    - id: l1-fix-redis
+      name: L1 Fix Redis Port
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: http://localhost:8000/remediate
+        headers:
+          - name: Content-Type
+            value: application/json
+        body: >-
+          {"session_id":"{{$['Investigate'].data.body.session_id}}","strategy":"fix-redis-port","snapshot":{{json($['Get Snapshot'].data.body)}}}
+        contentType: application/json
+        timeoutSeconds: 60
+      position: { x: 1200, y: 600 }
+
+    - id: merge-l1
+      name: Merge L1
+      type: TYPE_ACTION
+      component: merge
+      configuration:
+        enableTimeout: true
+        executionTimeout: { unit: minutes, value: 6 }
+      position: { x: 1500, y: 400 }
+
+    # ── AI planning ───────────────────────────────────────────────────────────
+    - id: plan
+      name: Plan
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: http://localhost:8000/plan
+        headers:
+          - name: Content-Type
+            value: application/json
+        body: >-
+          {"session_id":"{{$['Investigate'].data.body.session_id}}","error_signatures":["{{$['L1 Rollback'].data.body.error_signature}}","{{$['L1 Restart'].data.body.error_signature}}","{{$['L1 Fix Redis Port'].data.body.error_signature}}"],"tried_strategies":["rollback","restart","fix-redis-port"],"level":1}
+        contentType: application/json
+        timeoutSeconds: 30
+      position: { x: 1800, y: 400 }
+
+    # ── Level 2: AI-suggested strategies in parallel ──────────────────────────
+    - id: l2-s1
+      name: L2 Strategy 1
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: http://localhost:8000/remediate
+        headers:
+          - name: Content-Type
+            value: application/json
+        body: >-
+          {"session_id":"{{$['Investigate'].data.body.session_id}}","strategy":"{{$['Plan'].data.body.next_strategies[0]}}","snapshot":{{json($['Get Snapshot'].data.body)}}}
+        contentType: application/json
+        timeoutSeconds: 60
+      position: { x: 2100, y: 200 }
+
+    - id: l2-s2
+      name: L2 Strategy 2
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: http://localhost:8000/remediate
+        headers:
+          - name: Content-Type
+            value: application/json
+        body: >-
+          {"session_id":"{{$['Investigate'].data.body.session_id}}","strategy":"{{$['Plan'].data.body.next_strategies[1]}}","snapshot":{{json($['Get Snapshot'].data.body)}}}
+        contentType: application/json
+        timeoutSeconds: 60
+      position: { x: 2100, y: 400 }
+
+    - id: l2-s3
+      name: L2 Strategy 3
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: http://localhost:8000/remediate
+        headers:
+          - name: Content-Type
+            value: application/json
+        body: >-
+          {"session_id":"{{$['Investigate'].data.body.session_id}}","strategy":"{{$['Plan'].data.body.next_strategies[2]}}","snapshot":{{json($['Get Snapshot'].data.body)}}}
+        contentType: application/json
+        timeoutSeconds: 60
+      position: { x: 2100, y: 600 }
+
+    - id: merge-l2
+      name: Merge L2
+      type: TYPE_ACTION
+      component: merge
+      configuration:
+        enableTimeout: true
+        executionTimeout: { unit: minutes, value: 6 }
+      position: { x: 2400, y: 400 }
+
+    # ── Winner check ──────────────────────────────────────────────────────────
+    - id: check-winner
+      name: Any Strategy Passed?
+      type: TYPE_ACTION
+      component: if
+      configuration:
+        expression: >-
+          $['L2 Strategy 1'].data.body.passed == true ||
+          $['L2 Strategy 2'].data.body.passed == true ||
+          $['L2 Strategy 3'].data.body.passed == true
+      position: { x: 2700, y: 400 }
+
+    # ── Success path ──────────────────────────────────────────────────────────
+    - id: apply
+      name: Apply Winner
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: http://localhost:8000/apply
+        headers:
+          - name: Content-Type
+            value: application/json
+        body: >-
+          {"session_id":"{{$['Investigate'].data.body.session_id}}","strategy":"{{$['L2 Strategy 1'].data.body.passed == true ? $['L2 Strategy 1'].data.body.strategy : ($['L2 Strategy 2'].data.body.passed == true ? $['L2 Strategy 2'].data.body.strategy : $['L2 Strategy 3'].data.body.strategy)}}","snapshot":{{json($['Get Snapshot'].data.body)}}}
+        contentType: application/json
+        timeoutSeconds: 30
+      position: { x: 3000, y: 200 }
+
+    - id: card-resolved
+      name: Get Card (Resolved)
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: GET
+        url: http://localhost:8000/card/{{$['Investigate'].data.body.session_id}}
+        timeoutSeconds: 10
+      position: { x: 3300, y: 200 }
+
+    - id: notify-resolved
+      name: Notify Resolved
+      type: TYPE_ACTION
+      component: slack.sendTextMessage
+      configuration:
+        channel: "{{env.SLACK_CHANNEL}}"
+        text: >-
+          ✅ *Incident resolved* — `{{$['Incident Webhook'].data.container_id}}`
+          *Winning strategy:* `{{$['Get Card (Resolved)'].data.body.winning_strategy}}`
+          *Hypothesis:* {{$['Get Card (Resolved)'].data.body.hypothesis}}
+      position: { x: 3600, y: 200 }
+
+    # ── Failure path ──────────────────────────────────────────────────────────
+    - id: card-blocked
+      name: Get Card (Blocked)
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: GET
+        url: http://localhost:8000/card/{{$['Investigate'].data.body.session_id}}
+        timeoutSeconds: 10
+      position: { x: 3000, y: 600 }
+
+    - id: notify-blocked
+      name: Notify Blocked
+      type: TYPE_ACTION
+      component: slack.sendTextMessage
+      configuration:
+        channel: "{{env.SLACK_CHANNEL}}"
+        text: >-
+          🚫 *Incident blocked — human action required*
+          *Container:* `{{$['Incident Webhook'].data.container_id}}`
+          *Hypothesis:* {{$['Get Card (Blocked)'].data.body.hypothesis}}
+          *Tried:* rollback, restart, fix-redis-port + AI suggestions
+          *Open blockers:* {{json($['Get Card (Blocked)'].data.body.open_blockers)}}
+      position: { x: 3300, y: 600 }
+
+  edges:
+    # Trigger → investigate → snapshot → store
+    - { sourceId: webhook,       targetId: investigate,   channel: default }
+    - { sourceId: investigate,   targetId: get-snapshot,  channel: success }
+    - { sourceId: get-snapshot,  targetId: store-session, channel: success }
+
+    # Fan out to level 1
+    - { sourceId: store-session, targetId: l1-rollback,   channel: default }
+    - { sourceId: store-session, targetId: l1-restart,    channel: default }
+    - { sourceId: store-session, targetId: l1-fix-redis,  channel: default }
+
+    # Level 1 → merge
+    - { sourceId: l1-rollback,  targetId: merge-l1, channel: default }
+    - { sourceId: l1-restart,   targetId: merge-l1, channel: default }
+    - { sourceId: l1-fix-redis, targetId: merge-l1, channel: default }
+
+    # Merge → plan
+    - { sourceId: merge-l1, targetId: plan, channel: success }
+
+    # Fan out to level 2
+    - { sourceId: plan, targetId: l2-s1, channel: success }
+    - { sourceId: plan, targetId: l2-s2, channel: success }
+    - { sourceId: plan, targetId: l2-s3, channel: success }
+
+    # Level 2 → merge
+    - { sourceId: l2-s1, targetId: merge-l2, channel: default }
+    - { sourceId: l2-s2, targetId: merge-l2, channel: default }
+    - { sourceId: l2-s3, targetId: merge-l2, channel: default }
+
+    # Merge → winner check
+    - { sourceId: merge-l2,      targetId: check-winner, channel: success }
+
+    # Success path
+    - { sourceId: check-winner,  targetId: apply,          channel: "true"  }
+    - { sourceId: apply,         targetId: card-resolved,  channel: success }
+    - { sourceId: card-resolved, targetId: notify-resolved, channel: success }
+
+    # Failure path
+    - { sourceId: check-winner, targetId: card-blocked,   channel: "false" }
+    - { sourceId: card-blocked, targetId: notify-blocked, channel: success }
