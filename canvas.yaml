@@ -33,7 +33,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: http://localhost:8000/investigate
+        url: {{env.FULCRUM_URL}}/investigate
         headers:
           - name: Content-Type
             value: application/json
@@ -49,7 +49,7 @@ spec:
       component: http
       configuration:
         method: GET
-        url: http://localhost:8000/snapshot/{{$['Incident Webhook'].data.container_id}}
+        url: {{env.FULCRUM_URL}}/snapshot/{{$['Incident Webhook'].data.container_id}}
         timeoutSeconds: 10
       position: { x: 600, y: 400 }
 
@@ -73,7 +73,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: http://localhost:8000/remediate
+        url: {{env.FULCRUM_URL}}/remediate
         headers:
           - name: Content-Type
             value: application/json
@@ -89,7 +89,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: http://localhost:8000/remediate
+        url: {{env.FULCRUM_URL}}/remediate
         headers:
           - name: Content-Type
             value: application/json
@@ -105,7 +105,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: http://localhost:8000/remediate
+        url: {{env.FULCRUM_URL}}/remediate
         headers:
           - name: Content-Type
             value: application/json
@@ -131,7 +131,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: http://localhost:8000/plan
+        url: {{env.FULCRUM_URL}}/plan
         headers:
           - name: Content-Type
             value: application/json
@@ -148,7 +148,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: http://localhost:8000/remediate
+        url: {{env.FULCRUM_URL}}/remediate
         headers:
           - name: Content-Type
             value: application/json
@@ -164,7 +164,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: http://localhost:8000/remediate
+        url: {{env.FULCRUM_URL}}/remediate
         headers:
           - name: Content-Type
             value: application/json
@@ -180,7 +180,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: http://localhost:8000/remediate
+        url: {{env.FULCRUM_URL}}/remediate
         headers:
           - name: Content-Type
             value: application/json
@@ -218,7 +218,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: http://localhost:8000/apply
+        url: {{env.FULCRUM_URL}}/apply
         headers:
           - name: Content-Type
             value: application/json
@@ -234,7 +234,7 @@ spec:
       component: http
       configuration:
         method: GET
-        url: http://localhost:8000/card/{{$['Investigate'].data.body.session_id}}
+        url: {{env.FULCRUM_URL}}/card/{{$['Investigate'].data.body.session_id}}
         timeoutSeconds: 10
       position: { x: 3300, y: 200 }
 
@@ -257,7 +257,7 @@ spec:
       component: http
       configuration:
         method: GET
-        url: http://localhost:8000/card/{{$['Investigate'].data.body.session_id}}
+        url: {{env.FULCRUM_URL}}/card/{{$['Investigate'].data.body.session_id}}
         timeoutSeconds: 10
       position: { x: 3000, y: 600 }
 

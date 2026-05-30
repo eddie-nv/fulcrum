@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: fulcrum
+    runtime: docker
+    dockerfilePath: ./fulcrum/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: BATON_URL
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: fulcrum-redis
+          property: connectionString
+
+  - type: redis
+    name: fulcrum-redis
+    plan: free
+    maxmemoryPolicy: noeviction
