@@ -3,7 +3,7 @@
 **AI incident response agent** — runs parallel remediation attempts on isolated containers, adapts its strategy based on error signatures, and hands off a compressed diagnosis (not a log dump) when human action is required.
 
 [![Import to Superplane](https://img.shields.io/badge/Import%20to-Superplane-6366f1?style=for-the-badge)](https://app.superplane.com/canvas/import?url=https://raw.githubusercontent.com/eddie-nv/fulcrum/main/canvas.yaml)
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/eddie-nv/fulcrum)
 
 ---
 
@@ -94,6 +94,7 @@ curl -X POST localhost:8000/investigate \
 | `POST /apply` | Apply winning strategy to production |
 | `GET /card/:session_id` | Compressed FeatureCard summary |
 | `GET /tree/:session_id` | Full fork decision tree |
+| `GET /app/` | Decision tree UI — live polling, color-coded branch status |
 | `GET /health` | Health check |
 
 ---

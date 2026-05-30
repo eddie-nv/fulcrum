@@ -1,0 +1,10 @@
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.env
+ui/node_modules
+ui/dist
+.git
+tests/
+*.md
+PLAN.md
