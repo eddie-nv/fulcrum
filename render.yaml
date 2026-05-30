@@ -20,3 +20,4 @@ services:
     name: fulcrum-redis
     plan: free
     maxmemoryPolicy: noeviction
+    ipAllowList: []
