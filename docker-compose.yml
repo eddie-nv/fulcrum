@@ -1,0 +1,61 @@
+services:
+  # Healthy target: Redis on correct port (6380), backoff enabled
+  target-v1:
+    build: ./target
+    ports:
+      - "3001:3000"
+    environment:
+      VERSION: v1
+      PORT: "3000"
+      REDIS_HOST: redis
+      REDIS_PORT: "6380"
+      PAYMENT_URL: http://payment-provider:3003
+      ENABLE_BACKOFF: "true"
+      MAX_PAYMENT_RETRIES: "3"
+    depends_on:
+      redis:
+        condition: service_healthy
+      payment-provider:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Broken target: Redis pointed to wrong port (6379), no backoff on retries
+  target-v2:
+    build: ./target
+    ports:
+      - "3002:3000"
+    environment:
+      VERSION: v2
+      PORT: "3000"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"       # WRONG: Redis is on 6380
+      PAYMENT_URL: http://payment-provider:3003
+      ENABLE_BACKOFF: "false"  # WRONG: no backoff → retry flood
+      MAX_PAYMENT_RETRIES: "5"
+    depends_on:
+      redis:
+        condition: service_healthy
+      payment-provider:
+        condition: service_started
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6380"
+    command: redis-server --port 6380
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  payment-provider:
+    build: ./payment-provider
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: "3003"
