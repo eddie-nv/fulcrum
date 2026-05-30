@@ -73,6 +73,8 @@ class FeatureCard(BaseModel):
     error_signatures: list[str] = Field(default_factory=list)
     hypothesis: str | None = None
     open_blockers: list[str] = Field(default_factory=list)
+    # Baton integration — set when BATON_URL is configured
+    room_id: str | None = None
 
 
 class BranchNode(BaseModel):

@@ -5,9 +5,20 @@ from fastapi import APIRouter, HTTPException
 
 from fulcrum.schemas.models import BranchNode, RemediateRequest, RemediateResponse, StrategyStatus
 from fulcrum.services import baton_stub, session_store
+from fulcrum.services.baton_client import baton
 from fulcrum.services.fork_engine import ForkEngine
 
 router = APIRouter()
+
+
+def _short_signature(error_sig: str | None) -> str:
+    if not error_sig:
+        return "unknown"
+    sig = error_sig.lower()
+    for kw in ("econnrefused", "timeout", "429", "503", "oom", "refused", "reset"):
+        if kw in sig:
+            return kw
+    return sig[:40].replace(" ", "_")
 
 
 @router.post("/remediate", response_model=RemediateResponse)
@@ -18,8 +29,6 @@ async def remediate(req: RemediateRequest):
 
     snapshot = req.snapshot
 
-    # Use ForkEngine when snapshot carries a full container state (has "image").
-    # Fall back to stub for unit tests that pass a minimal snapshot dict.
     if "image" in snapshot:
         try:
             engine = ForkEngine()
@@ -38,6 +47,30 @@ async def remediate(req: RemediateRequest):
             strategy=req.strategy,
             snapshot=snapshot,
         )
+
+    # Record fork result to Baton
+    if card.room_id:
+        if passed:
+            await baton.append_event(
+                card.room_id,
+                req.session_id,
+                "decision.made",
+                {
+                    "summary": f"Strategy '{req.strategy}' passed health check",
+                    "next_action": f"apply {req.strategy} to production",
+                },
+            )
+        else:
+            await baton.append_event(
+                card.room_id,
+                req.session_id,
+                "error.test",
+                {
+                    "test_name": req.strategy,
+                    "output": error_sig or "health check failed",
+                    "signature": _short_signature(error_sig),
+                },
+            )
 
     node = BranchNode(
         id=str(uuid.uuid4()),

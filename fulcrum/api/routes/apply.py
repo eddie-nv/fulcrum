@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException
+
 from fulcrum.schemas.models import ApplyRequest, ApplyResponse
 from fulcrum.services import session_store
+from fulcrum.services.baton_client import baton
 
 router = APIRouter()
 
@@ -16,6 +18,18 @@ async def apply(req: ApplyRequest):
         status="resolved",
         winning_strategy=req.strategy,
     )
+
+    # Record resolution to Baton — decision.made clears hypotheses and marks the feature done
+    if card.room_id:
+        await baton.append_event(
+            card.room_id,
+            req.session_id,
+            "decision.made",
+            {
+                "summary": f"Resolved: strategy '{req.strategy}' applied to {card.container_id}",
+                "next_action": "monitor production health",
+            },
+        )
 
     return ApplyResponse(
         session_id=req.session_id,

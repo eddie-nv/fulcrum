@@ -7,7 +7,7 @@ _sessions: dict[str, FeatureCard] = {}
 _trees: dict[str, list[BranchNode]] = {}
 
 
-def create_session(container_id: str, error_signature: str) -> str:
+def create_session(container_id: str, error_signature: str, room_id: str | None = None) -> str:
     session_id = str(uuid.uuid4())
     _sessions[session_id] = FeatureCard(
         session_id=session_id,
@@ -15,6 +15,7 @@ def create_session(container_id: str, error_signature: str) -> str:
         status="investigating",
         levels_tried=0,
         error_signatures=[error_signature],
+        room_id=room_id,
     )
     _trees[session_id] = []
     return session_id
