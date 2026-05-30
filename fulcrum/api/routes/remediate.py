@@ -82,7 +82,8 @@ async def remediate(req: RemediateRequest):
 
     node = BranchNode(
         id=str(uuid.uuid4()),
-        level=1,
+        parent_id=req.parent_id,
+        level=req.level,
         strategy=req.strategy,
         status=StrategyStatus.passed if passed else StrategyStatus.failed,
         error_signature=error_sig,
