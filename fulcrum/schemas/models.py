@@ -26,6 +26,8 @@ class RemediateRequest(BaseModel):
     session_id: str
     strategy: str = Field(..., description="Strategy name to apply")
     snapshot: dict[str, Any] = Field(..., description="Container snapshot from ForkEngine")
+    level: int = Field(default=1, ge=1, le=3)
+    parent_id: str | None = None
 
 
 class RemediateResponse(BaseModel):
